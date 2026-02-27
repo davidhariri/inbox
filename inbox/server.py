@@ -88,13 +88,8 @@ def create_server() -> FastMCP:
         def __init__(self, server_url):
             self.server_url = server_url
 
-        @property
-        def conn(self):
-            return _conn
-
-        @conn.setter
-        def conn(self, value):
-            pass
+        async def _get_conn(self):
+            return await _get_conn()
 
     auth_provider = LazyAuthProvider(server_url)
 

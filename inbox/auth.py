@@ -25,8 +25,11 @@ class InboxAuthProvider(_Base):
         self.conn = conn
         self.server_url = server_url
 
+    async def _get_conn(self):
+        return self.conn
+
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
-        row = await db.get_oauth_client(self.conn, client_id)
+        row = await db.get_oauth_client(await self._get_conn(), client_id)
         if not row:
             return None
         return OAuthClientInformationFull(**json.loads(row["client_info"]))
@@ -38,13 +41,13 @@ class InboxAuthProvider(_Base):
         client_info.client_secret = client_secret
         client_info.client_id_issued_at = int(time.time())
         await db.save_oauth_client(
-            self.conn, client_id, client_secret, client_info.model_dump_json()
+            await self._get_conn(), client_id, client_secret, client_info.model_dump_json()
         )
 
     async def authorize(
         self, client: OAuthClientInformationFull, params: AuthorizationParams
     ) -> str:
-        setup_done = await db.is_setup_complete(self.conn)
+        setup_done = await db.is_setup_complete(await self._get_conn())
         if not setup_done:
             raise AuthorizeError(
                 error="temporarily_unavailable",
@@ -54,7 +57,7 @@ class InboxAuthProvider(_Base):
         # Store auth params in a pending session so login can complete it
         session_id = secrets.token_hex(16)
         await db.set_setting(
-            self.conn,
+            await self._get_conn(),
             f"auth_session:{session_id}",
             json.dumps(
                 {
@@ -72,7 +75,7 @@ class InboxAuthProvider(_Base):
 
     async def complete_authorization(self, session_id: str, email: str, password: str) -> str:
         """Validate login and return redirect URL with auth code."""
-        session_data = await db.get_setting(self.conn, f"auth_session:{session_id}")
+        session_data = await db.get_setting(await self._get_conn(), f"auth_session:{session_id}")
         if not session_data:
             raise AuthorizeError(
                 error="invalid_request",
@@ -82,20 +85,20 @@ class InboxAuthProvider(_Base):
         session = json.loads(session_data)
 
         # Check sign-in policy
-        user = await db.get_user_by_email(self.conn, email)
+        user = await db.get_user_by_email(await self._get_conn(), email)
         if not user:
-            policy = await db.get_setting(self.conn, "sign_in_policy") or "only_me"
+            policy = await db.get_setting(await self._get_conn(), "sign_in_policy") or "only_me"
             if policy == "only_me":
-                owner = await db.get_setting(self.conn, "owner_email")
+                owner = await db.get_setting(await self._get_conn(), "owner_email")
                 if email.lower() != owner.lower():
                     raise AuthorizeError(
                         error="access_denied",
                         error_description="Sign-in is restricted to the owner",
                     )
             elif policy == "allowlist":
-                allowed = await db.get_setting(self.conn, "allowed_emails") or ""
+                allowed = await db.get_setting(await self._get_conn(), "allowed_emails") or ""
                 allowed_list = [e.strip().lower() for e in allowed.split(",") if e.strip()]
-                owner = await db.get_setting(self.conn, "owner_email")
+                owner = await db.get_setting(await self._get_conn(), "owner_email")
                 allowed_list.append(owner.lower())
                 if email.lower() not in allowed_list:
                     raise AuthorizeError(
@@ -106,7 +109,7 @@ class InboxAuthProvider(_Base):
 
             # Create new user
             hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-            user = await db.create_user(self.conn, email, hashed)
+            user = await db.create_user(await self._get_conn(), email, hashed)
         else:
             if not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
                 raise AuthorizeError(error="access_denied", error_description="Invalid password")
@@ -114,7 +117,7 @@ class InboxAuthProvider(_Base):
         # Generate authorization code
         code = secrets.token_hex(20)
         await db.save_authorization_code(
-            self.conn,
+            await self._get_conn(),
             code=code,
             client_id=session["client_id"],
             redirect_uri=session["redirect_uri"],
@@ -135,13 +138,13 @@ class InboxAuthProvider(_Base):
     async def load_authorization_code(
         self, client: OAuthClientInformationFull, authorization_code: str
     ) -> AuthorizationCode | None:
-        row = await db.get_authorization_code(self.conn, authorization_code)
+        row = await db.get_authorization_code(await self._get_conn(), authorization_code)
         if not row:
             return None
         if row["client_id"] != client.client_id:
             return None
         if row["expires_at"] < time.time():
-            await db.delete_authorization_code(self.conn, authorization_code)
+            await db.delete_authorization_code(await self._get_conn(), authorization_code)
             return None
         return AuthorizationCode(
             code=row["code"],
@@ -157,14 +160,14 @@ class InboxAuthProvider(_Base):
     async def exchange_authorization_code(
         self, client: OAuthClientInformationFull, authorization_code: AuthorizationCode
     ) -> OAuthToken:
-        await db.delete_authorization_code(self.conn, authorization_code.code)
+        await db.delete_authorization_code(await self._get_conn(), authorization_code.code)
 
         access_token = secrets.token_hex(32)
         refresh_token = secrets.token_hex(32)
         expires_in = 3600
 
         await db.save_oauth_token(
-            self.conn,
+            await self._get_conn(),
             access_token,
             "access",
             client.client_id,
@@ -173,7 +176,7 @@ class InboxAuthProvider(_Base):
             resource=authorization_code.resource,
         )
         await db.save_oauth_token(
-            self.conn,
+            await self._get_conn(),
             refresh_token,
             "refresh",
             client.client_id,
@@ -192,7 +195,7 @@ class InboxAuthProvider(_Base):
     async def load_refresh_token(
         self, client: OAuthClientInformationFull, refresh_token: str
     ) -> RefreshToken | None:
-        row = await db.get_oauth_token(self.conn, refresh_token)
+        row = await db.get_oauth_token(await self._get_conn(), refresh_token)
         if not row or row["token_type"] != "refresh":
             return None
         if row["client_id"] != client.client_id:
@@ -208,7 +211,7 @@ class InboxAuthProvider(_Base):
         self, client: OAuthClientInformationFull, refresh_token: RefreshToken, scopes: list[str]
     ) -> OAuthToken:
         # Revoke old tokens
-        await db.delete_oauth_tokens_for_client(self.conn, client.client_id)
+        await db.delete_oauth_tokens_for_client(await self._get_conn(), client.client_id)
 
         access_token = secrets.token_hex(32)
         new_refresh_token = secrets.token_hex(32)
@@ -216,7 +219,7 @@ class InboxAuthProvider(_Base):
         use_scopes = scopes or refresh_token.scopes
 
         await db.save_oauth_token(
-            self.conn,
+            await self._get_conn(),
             access_token,
             "access",
             client.client_id,
@@ -224,7 +227,7 @@ class InboxAuthProvider(_Base):
             int(time.time()) + expires_in,
         )
         await db.save_oauth_token(
-            self.conn,
+            await self._get_conn(),
             new_refresh_token,
             "refresh",
             client.client_id,
@@ -240,7 +243,7 @@ class InboxAuthProvider(_Base):
         )
 
     async def load_access_token(self, token: str) -> AccessToken | None:
-        row = await db.get_oauth_token(self.conn, token)
+        row = await db.get_oauth_token(await self._get_conn(), token)
         if not row or row["token_type"] != "access":
             return None
         if row["expires_at"] and row["expires_at"] < time.time():
@@ -254,4 +257,4 @@ class InboxAuthProvider(_Base):
         )
 
     async def revoke_token(self, token: AccessToken | RefreshToken) -> None:
-        await db.delete_oauth_tokens_for_client(self.conn, token.client_id)
+        await db.delete_oauth_tokens_for_client(await self._get_conn(), token.client_id)
