@@ -58,6 +58,7 @@ Todos land in the Inbox by default and can be triaged into projects. Tags provid
 |--------------|---------|------------------------------------------|
 | `id`         | INTEGER | Primary key, autoincrement               |
 | `name`       | TEXT    | Required. Unique.                        |
+| `description`| TEXT    | Optional. Short description of the project. |
 | `created_at` | TEXT    | ISO 8601 datetime                        |
 | `updated_at` | TEXT    | ISO 8601 datetime                        |
 | `deleted_at` | TEXT    | Soft delete timestamp.                   |
@@ -142,6 +143,33 @@ Soft-delete a todo. Sets `deleted_at` to now.
 
 Returns: confirmation.
 
+#### `bulk_create_todos`
+Create multiple todos at once. Each item can specify all fields independently.
+
+| Param   | Type          | Required | Notes                                                  |
+|---------|---------------|----------|--------------------------------------------------------|
+| `todos` | `list[dict]`  | Yes      | Each dict has `name` (required), plus optional `link`, `due_date`, `priority`, `project_id`, `tags` |
+
+Returns: list of created todos and count.
+
+#### `bulk_complete_todos`
+Mark multiple todos as done at once. Skips already-completed todos.
+
+| Param | Type         | Required |
+|-------|--------------|----------|
+| `ids` | `list[int]`  | Yes      |
+
+Returns: completed todos, count, and any skipped (with reason).
+
+#### `bulk_delete_todos`
+Soft-delete multiple todos at once.
+
+| Param | Type         | Required |
+|-------|--------------|----------|
+| `ids` | `list[int]`  | Yes      |
+
+Returns: deleted todo IDs/names and count.
+
 #### `search_todos`
 Full-text search + filtering. All params optional — calling with no args returns all open Inbox todos.
 
@@ -160,9 +188,10 @@ Returns: list of matching todos, ordered by due_date (nulls last), then created_
 
 #### `create_project`
 
-| Param  | Type  | Required |
-|--------|-------|----------|
-| `name` | `str` | Yes      |
+| Param         | Type  | Required |
+|---------------|-------|----------|
+| `name`        | `str` | Yes      |
+| `description` | `str` | No       |
 
 Returns: the created project.
 
@@ -171,10 +200,11 @@ No params. Returns all active projects with todo counts (open / done).
 
 #### `update_project`
 
-| Param  | Type  | Required |
-|--------|-------|----------|
-| `id`   | `int` | Yes      |
-| `name` | `str` | Yes      |
+| Param         | Type  | Required |
+|---------------|-------|----------|
+| `id`          | `int` | Yes      |
+| `name`        | `str` | No       |
+| `description` | `str` | No       |
 
 Returns: the updated project.
 
