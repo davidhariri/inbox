@@ -212,9 +212,9 @@ def create_server() -> FastMCP:
     # --- Project tools ---
 
     @mcp.tool(annotations=ToolAnnotations(destructiveHint=False))
-    async def create_project(name: str) -> dict:
+    async def create_project(name: str, description: str | None = None) -> dict:
         """Create a new project."""
-        return await project_tools.create_project(await _get_conn(), name)
+        return await project_tools.create_project(await _get_conn(), name, description)
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_projects() -> dict:
@@ -222,9 +222,13 @@ def create_server() -> FastMCP:
         return await project_tools.list_projects(await _get_conn())
 
     @mcp.tool(annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True))
-    async def update_project(id: int, name: str) -> dict:
-        """Rename a project."""
-        return await project_tools.update_project(await _get_conn(), id, name)
+    async def update_project(
+        id: int, name: str | None = None, description: str | None = None
+    ) -> dict:
+        """Update a project. Only provided fields are changed."""
+        return await project_tools.update_project(
+            await _get_conn(), id, name=name, description=description
+        )
 
     @mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
     async def delete_project(id: int) -> dict:

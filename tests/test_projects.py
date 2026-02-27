@@ -9,6 +9,20 @@ async def test_create_project(conn):
     assert result["project"]["name"] == "Work"
 
 
+async def test_create_project_with_description(conn):
+    result = await projects.create_project(conn, "Work", description="Day job tasks")
+    assert result["project"]["name"] == "Work"
+    assert result["project"]["description"] == "Day job tasks"
+
+
+async def test_update_project_description(conn):
+    created = await projects.create_project(conn, "Work")
+    assert created["project"]["description"] is None
+    result = await projects.update_project(conn, created["project"]["id"], description="Updated")
+    assert result["project"]["description"] == "Updated"
+    assert result["project"]["name"] == "Work"
+
+
 async def test_create_project_empty_name(conn):
     with pytest.raises(ValueError, match="name is required"):
         await projects.create_project(conn, "")

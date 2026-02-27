@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS projects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
+    description TEXT,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     deleted_at TEXT
@@ -108,12 +109,23 @@ def _now() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+MIGRATIONS = [
+    "ALTER TABLE projects ADD COLUMN description TEXT",
+]
+
+
 async def get_db(path: str | None = None) -> aiosqlite.Connection:
     db = await aiosqlite.connect(path or DATABASE_PATH)
     db.row_factory = aiosqlite.Row
     await db.execute("PRAGMA journal_mode=WAL")
     await db.execute("PRAGMA foreign_keys=ON")
     await db.executescript(SCHEMA)
+    for sql in MIGRATIONS:
+        try:
+            await db.execute(sql)
+        except Exception:
+            pass  # already applied
+    await db.commit()
     return db
 
 
@@ -342,11 +354,13 @@ async def count_overdue_todos(db: aiosqlite.Connection) -> int:
 # --- Projects ---
 
 
-async def create_project(db: aiosqlite.Connection, name: str) -> dict:
+async def create_project(
+    db: aiosqlite.Connection, name: str, description: str | None = None
+) -> dict:
     now = _now()
     cursor = await db.execute(
-        "INSERT INTO projects (name, created_at, updated_at) VALUES (?, ?, ?)",
-        (name, now, now),
+        "INSERT INTO projects (name, description, created_at, updated_at) VALUES (?, ?, ?, ?)",
+        (name, description, now, now),
     )
     await db.commit()
     return await get_project(db, cursor.lastrowid)
@@ -375,14 +389,23 @@ async def list_projects(db: aiosqlite.Connection) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-async def update_project(db: aiosqlite.Connection, project_id: int, name: str) -> dict | None:
+async def update_project(
+    db: aiosqlite.Connection, project_id: int, **fields
+) -> dict | None:
     project = await get_project(db, project_id)
     if not project:
         return None
-    now = _now()
+    updates = []
+    values = []
+    for key, val in fields.items():
+        updates.append(f"{key} = ?")
+        values.append(val)
+    updates.append("updated_at = ?")
+    values.append(_now())
+    values.append(project_id)
     await db.execute(
-        "UPDATE projects SET name = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
-        (name, now, project_id),
+        f"UPDATE projects SET {', '.join(updates)} WHERE id = ? AND deleted_at IS NULL",
+        values,
     )
     await db.commit()
     return await get_project(db, project_id)
