@@ -142,13 +142,10 @@ def create_server() -> FastMCP:
 
     @mcp.tool(annotations=ToolAnnotations(destructiveHint=False))
     async def bulk_create_todos(
-        names: list[str],
-        project_id: int | None = None,
+        todos: list[dict],
     ) -> dict:
-        """Create multiple todos at once. All land in the same project (or Inbox if project_id is null)."""
-        return await todo_tools.bulk_create_todos(
-            await _get_conn(), names=names, project_id=project_id
-        )
+        """Create multiple todos at once. Each item needs a name; link, due_date, priority, project_id, and tags are optional."""
+        return await todo_tools.bulk_create_todos(await _get_conn(), todos=todos)
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_todo(id: int) -> dict:

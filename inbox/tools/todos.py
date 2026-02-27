@@ -94,33 +94,41 @@ async def create_todo(
 
 async def bulk_create_todos(
     conn,
-    names: list[str],
-    project_id: int | None = None,
+    todos: list[dict],
 ) -> dict:
-    if not names:
-        raise ValueError("names must not be empty")
+    if not todos:
+        raise ValueError("todos must not be empty")
 
-    if project_id is not None:
-        project = await db.get_project(conn, project_id)
-        if not project:
-            raise ValueError(f"project_id {project_id} does not exist")
+    # Validate all items before creating any
+    validated_projects = {}
+    for i, item in enumerate(todos):
+        name = item.get("name")
+        if not name or not str(name).strip():
+            raise ValueError(f"todo {i}: name is required and must not be non-empty")
+        _validate_priority(item.get("priority"))
+        _validate_due_date(item.get("due_date"))
+        _validate_tags(item.get("tags"))
+        pid = item.get("project_id")
+        if pid is not None and pid not in validated_projects:
+            project = await db.get_project(conn, pid)
+            if not project:
+                raise ValueError(f"todo {i}: project_id {pid} does not exist")
+            validated_projects[pid] = project
 
     created = []
-    for name in names:
-        if not name or not name.strip():
-            raise ValueError("each name must be non-empty")
-        todo = await db.create_todo(conn, name=name.strip(), project_id=project_id)
+    for item in todos:
+        todo = await db.create_todo(
+            conn,
+            name=str(item["name"]).strip(),
+            link=item.get("link"),
+            due_date=item.get("due_date"),
+            priority=item.get("priority"),
+            project_id=item.get("project_id"),
+            tags=item.get("tags"),
+        )
         created.append(todo)
 
-    project_name = await _project_name(conn, project_id)
-    open_count = await db.count_open_todos(conn, project_id=project_id if project_id else 0)
-
-    return {
-        "todos": created,
-        "count": len(created),
-        "project": project_name,
-        "open_in_project": open_count,
-    }
+    return {"todos": created, "count": len(created)}
 
 
 async def bulk_complete_todos(conn, ids: list[int]) -> dict:
