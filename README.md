@@ -13,8 +13,8 @@ Check the deploy logs for your setup URL and one-time code, then visit it to cre
 ## Self-hosted
 
 ```bash
-uv sync
-python -m inbox
+docker build -t inbox .
+docker run -p 8000:8000 -v inbox-data:/data inbox
 ```
 
 Check the logs for the setup URL on first run.
