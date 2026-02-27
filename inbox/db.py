@@ -2,10 +2,12 @@ import json
 import os
 import secrets
 from datetime import UTC, datetime
+from pathlib import Path
 
 import aiosqlite
 
 DATABASE_PATH = os.environ.get("DATABASE_PATH", "./inbox.db")
+Path(DATABASE_PATH).parent.mkdir(parents=True, exist_ok=True)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS settings (
