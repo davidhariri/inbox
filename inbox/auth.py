@@ -129,7 +129,7 @@ class InboxAuthProvider(_Base):
         )
 
         # Clean up session
-        await db.set_setting(self.conn, f"auth_session:{session_id}", "")
+        await db.set_setting(await self._get_conn(), f"auth_session:{session_id}", "")
 
         return construct_redirect_uri(
             session["redirect_uri"], code=code, state=session.get("state")
