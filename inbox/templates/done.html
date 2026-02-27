@@ -73,12 +73,33 @@
         }
 
         .config-block {
+            position: relative;
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: var(--space-sm) var(--space-md);
             margin-bottom: var(--space-md);
             overflow-x: auto;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: var(--space-xs);
+            right: var(--space-xs);
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-family: var(--font);
+            padding: 4px 10px;
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        .copy-btn:hover {
+            color: var(--text);
+            border-color: var(--text-secondary);
         }
 
         pre {
@@ -109,6 +130,7 @@
             <h2>Claude Desktop</h2>
             <p class="hint">Add this to your Claude Desktop config file:</p>
             <div class="config-block">
+                <button class="copy-btn" onclick="copyBlock(this)">Copy</button>
                 <pre>{
   "mcpServers": {
     "inbox": {
@@ -124,6 +146,7 @@
             <h2>Claude Code</h2>
             <p class="hint">Run this command:</p>
             <div class="config-block">
+                <button class="copy-btn" onclick="copyBlock(this)">Copy</button>
                 <pre>claude mcp add inbox --transport http {{server_url}}/mcp</pre>
             </div>
         </div>
@@ -132,9 +155,19 @@
             <h2>ChatGPT</h2>
             <p class="hint">In ChatGPT settings, add an MCP server with this URL:</p>
             <div class="config-block">
+                <button class="copy-btn" onclick="copyBlock(this)">Copy</button>
                 <pre>{{server_url}}/mcp</pre>
             </div>
         </div>
     </div>
+    <script>
+    function copyBlock(btn) {
+        const text = btn.parentElement.querySelector('pre').textContent;
+        navigator.clipboard.writeText(text).then(() => {
+            btn.textContent = 'Copied';
+            setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+        });
+    }
+    </script>
 </body>
 </html>
