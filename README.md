@@ -46,35 +46,6 @@ claude mcp add inbox --transport http http://localhost:8000/mcp
 
 In ChatGPT settings, add an MCP server with URL: `http://localhost:8000/mcp`
 
-## Tools
-
-### Todos
-
-| Tool | Description |
-|------|-------------|
-| `create_todo` | Create a todo. Lands in Inbox unless `project_id` is given. |
-| `get_todo` | Fetch a single todo by ID. |
-| `update_todo` | Update one or more fields. Only provided fields change. |
-| `complete_todo` | Mark a todo as done. |
-| `reopen_todo` | Reopen a completed todo. |
-| `delete_todo` | Soft-delete a todo. |
-| `search_todos` | Full-text search + filtering. No args = all open Inbox todos. |
-
-### Projects
-
-| Tool | Description |
-|------|-------------|
-| `create_project` | Create a new project. |
-| `list_projects` | List all projects with open/done counts. |
-| `update_project` | Rename a project. |
-| `delete_project` | Delete a project. Todos move to Inbox. |
-
-### Tags
-
-| Tool | Description |
-|------|-------------|
-| `list_tags` | All unique tags in use, with counts. |
-
 ## Environment variables
 
 All optional:
