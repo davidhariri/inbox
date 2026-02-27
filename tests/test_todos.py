@@ -95,6 +95,56 @@ async def test_bulk_create_todos_empty_name(conn):
         await todos.bulk_create_todos(conn, names=["Valid", ""])
 
 
+async def test_bulk_complete_todos(conn):
+    t1 = await todos.create_todo(conn, name="A")
+    t2 = await todos.create_todo(conn, name="B")
+    t3 = await todos.create_todo(conn, name="C")
+    ids = [t1["todo"]["id"], t2["todo"]["id"], t3["todo"]["id"]]
+    result = await todos.bulk_complete_todos(conn, ids=ids)
+    assert result["count"] == 3
+    assert all(t["completed_at"] is not None for t in result["completed"])
+
+
+async def test_bulk_complete_skips_already_done(conn):
+    t1 = await todos.create_todo(conn, name="A")
+    await todos.complete_todo(conn, t1["todo"]["id"])
+    t2 = await todos.create_todo(conn, name="B")
+    result = await todos.bulk_complete_todos(conn, ids=[t1["todo"]["id"], t2["todo"]["id"]])
+    assert result["count"] == 1
+    assert len(result["skipped"]) == 1
+    assert result["skipped"][0]["reason"] == "already completed"
+
+
+async def test_bulk_complete_empty_ids(conn):
+    with pytest.raises(ValueError, match="must not be empty"):
+        await todos.bulk_complete_todos(conn, ids=[])
+
+
+async def test_bulk_complete_not_found(conn):
+    with pytest.raises(ValueError, match="not found"):
+        await todos.bulk_complete_todos(conn, ids=[999])
+
+
+async def test_bulk_delete_todos(conn):
+    t1 = await todos.create_todo(conn, name="A")
+    t2 = await todos.create_todo(conn, name="B")
+    result = await todos.bulk_delete_todos(conn, ids=[t1["todo"]["id"], t2["todo"]["id"]])
+    assert result["count"] == 2
+    # Verify they're actually gone from search
+    search = await todos.search_todos(conn)
+    assert search["count"] == 0
+
+
+async def test_bulk_delete_empty_ids(conn):
+    with pytest.raises(ValueError, match="must not be empty"):
+        await todos.bulk_delete_todos(conn, ids=[])
+
+
+async def test_bulk_delete_not_found(conn):
+    with pytest.raises(ValueError, match="not found"):
+        await todos.bulk_delete_todos(conn, ids=[999])
+
+
 async def test_bulk_create_todos_invalid_project(conn):
     with pytest.raises(ValueError, match="does not exist"):
         await todos.bulk_create_todos(conn, names=["Test"], project_id=999)

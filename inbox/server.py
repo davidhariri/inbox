@@ -193,6 +193,16 @@ def create_server() -> FastMCP:
         """Soft-delete a todo."""
         return await todo_tools.delete_todo(await _get_conn(), id)
 
+    @mcp.tool(annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True))
+    async def bulk_complete_todos(ids: list[int]) -> dict:
+        """Mark multiple todos as done at once."""
+        return await todo_tools.bulk_complete_todos(await _get_conn(), ids=ids)
+
+    @mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
+    async def bulk_delete_todos(ids: list[int]) -> dict:
+        """Soft-delete multiple todos at once."""
+        return await todo_tools.bulk_delete_todos(await _get_conn(), ids=ids)
+
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def search_todos(
         query: str | None = None,

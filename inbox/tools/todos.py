@@ -123,6 +123,43 @@ async def bulk_create_todos(
     }
 
 
+async def bulk_complete_todos(conn, ids: list[int]) -> dict:
+    if not ids:
+        raise ValueError("ids must not be empty")
+
+    completed = []
+    skipped = []
+    for id in ids:
+        todo = await db.get_todo(conn, id)
+        if not todo:
+            raise ValueError(f"todo {id} not found")
+        if todo["completed_at"]:
+            skipped.append({"id": id, "name": todo["name"], "reason": "already completed"})
+            continue
+        todo = await db.complete_todo(conn, id)
+        completed.append(todo)
+
+    result = {"completed": completed, "count": len(completed)}
+    if skipped:
+        result["skipped"] = skipped
+    return result
+
+
+async def bulk_delete_todos(conn, ids: list[int]) -> dict:
+    if not ids:
+        raise ValueError("ids must not be empty")
+
+    deleted = []
+    for id in ids:
+        todo = await db.get_todo(conn, id)
+        if not todo:
+            raise ValueError(f"todo {id} not found")
+        await db.delete_todo(conn, id)
+        deleted.append({"id": id, "name": todo["name"]})
+
+    return {"deleted": deleted, "count": len(deleted)}
+
+
 async def get_todo(conn, id: int) -> dict:
     todo = await db.get_todo(conn, id)
     if not todo:
