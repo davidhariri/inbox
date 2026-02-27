@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inbox — You're all set</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --bg-surface: #f5f5f7;
+            --text: #1d1d1f;
+            --text-secondary: #86868b;
+            --border: #d2d2d7;
+            --accent: #0071e3;
+            --radius: 12px;
+            --space-xs: 8px;
+            --space-sm: 12px;
+            --space-md: 20px;
+            --space-lg: 32px;
+            --space-xl: 48px;
+            --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1d1d1f;
+                --bg-surface: #2d2d2f;
+                --text: #f5f5f7;
+                --text-secondary: #86868b;
+                --border: #424245;
+                --accent: #2997ff;
+            }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-md);
+        }
+
+        .card {
+            background: var(--bg-surface);
+            border-radius: var(--radius);
+            padding: var(--space-xl) var(--space-lg);
+            width: 100%;
+            max-width: 540px;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: var(--space-xs);
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 15px;
+            margin-bottom: var(--space-lg);
+        }
+
+        h2 {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: var(--space-sm);
+        }
+
+        .config-block {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: var(--space-sm) var(--space-md);
+            margin-bottom: var(--space-md);
+            overflow-x: auto;
+        }
+
+        pre {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre;
+            color: var(--text);
+        }
+
+        .hint {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-bottom: var(--space-lg);
+        }
+
+        .section {
+            margin-bottom: var(--space-lg);
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>You're all set</h1>
+        <p class="subtitle">Inbox is ready. Connect your MCP client to start managing todos.</p>
+
+        <div class="section">
+            <h2>Claude Desktop</h2>
+            <p class="hint">Add this to your Claude Desktop config file:</p>
+            <div class="config-block">
+                <pre>{
+  "mcpServers": {
+    "inbox": {
+      "type": "streamable-http",
+      "url": "{{server_url}}/mcp"
+    }
+  }
+}</pre>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Claude Code</h2>
+            <p class="hint">Run this command:</p>
+            <div class="config-block">
+                <pre>claude mcp add inbox --transport http {{server_url}}/mcp</pre>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>ChatGPT</h2>
+            <p class="hint">In ChatGPT settings, add an MCP server with this URL:</p>
+            <div class="config-block">
+                <pre>{{server_url}}/mcp</pre>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

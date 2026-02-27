@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inbox — Sign in</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --bg-surface: #f5f5f7;
+            --text: #1d1d1f;
+            --text-secondary: #86868b;
+            --border: #d2d2d7;
+            --accent: #0071e3;
+            --accent-hover: #0077ed;
+            --error: #ff3b30;
+            --radius: 12px;
+            --space-xs: 8px;
+            --space-sm: 12px;
+            --space-md: 20px;
+            --space-lg: 32px;
+            --space-xl: 48px;
+            --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1d1d1f;
+                --bg-surface: #2d2d2f;
+                --text: #f5f5f7;
+                --text-secondary: #86868b;
+                --border: #424245;
+                --accent: #2997ff;
+                --accent-hover: #4db3ff;
+            }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-md);
+        }
+
+        .card {
+            background: var(--bg-surface);
+            border-radius: var(--radius);
+            padding: var(--space-xl) var(--space-lg);
+            width: 100%;
+            max-width: 440px;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: var(--space-xs);
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 15px;
+            margin-bottom: var(--space-lg);
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+            color: var(--text-secondary);
+        }
+
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px 14px;
+            font-size: 16px;
+            font-family: var(--font);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg);
+            color: var(--text);
+            margin-bottom: var(--space-md);
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        input:focus { border-color: var(--accent); }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: var(--font);
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        button:hover { background: var(--accent-hover); }
+
+        .error {
+            color: var(--error);
+            font-size: 14px;
+            margin-bottom: var(--space-md);
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Sign in to Inbox</h1>
+        <p class="subtitle">Authorize this app to manage your todos.</p>
+
+        <form hx-post="/login" hx-target="#feedback" hx-swap="innerHTML">
+            <input type="hidden" name="session" value="{{session}}">
+
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="you@example.com" required autofocus>
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="Your password" required>
+
+            <div id="feedback"></div>
+
+            <button type="submit">Sign in</button>
+        </form>
+    </div>
+</body>
+</html>

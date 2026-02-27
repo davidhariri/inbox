@@ -1,4 +1,4 @@
-# Inbox — Claude Code Instructions
+# Inbox — Agent Instructions
 
 ## What is this project?
 
@@ -12,6 +12,7 @@ Inbox is an MCP-native todo manager. No UI, no REST API — just an MCP server b
 - **pytest + pytest-asyncio** — testing. The MCP SDK is async, so all tests are async.
 - **MCP Python SDK (`mcp`)** — official SDK. Uses Starlette + uvicorn under the hood. No FastAPI.
 - **SQLite with FTS5** — single-file database. `aiosqlite` for async access.
+- **HTMX** — declarative form interactions. CDN, no build step. Docs: https://htmx.org/docs/
 
 ## Project layout
 
@@ -62,6 +63,13 @@ uv run pytest -x          # Stop on first failure
 - **First-time onboarding.** Server boots in setup mode when no owner exists. Prints a one-time code to stdout, serves `/setup`, blocks MCP with 503. After setup, `/setup` disappears.
 - **SECRET_KEY auto-generates.** Check env var first, then DB `settings` table, then generate and persist. User never has to set this.
 
+## Code principles
+
+- **KISS.** Simplest solution that works. If there's a choice between clever and obvious, pick obvious.
+- **DRY.** Extract when you see actual duplication (3+ occurrences), not potential duplication. Three similar lines are better than a premature abstraction.
+- **Single responsibility.** Each module, function, and tool handler does one thing. If a function needs an "and" in its description, split it.
+- **Fail fast.** Validate inputs at the boundary and reject early with clear errors. Don't let bad data propagate.
+
 ## Code style
 
 - Keep it simple. Don't add abstractions for one-time operations.
@@ -69,6 +77,13 @@ uv run pytest -x          # Stop on first failure
 - Validate at boundaries (tool inputs), trust internal code.
 - Error messages should be actionable: tell the caller what went wrong and what the valid options are.
 - Tool responses should carry context (see TASTE.md "The AI is the user"). Return the created/updated object plus relevant context like open todo count or overdue items.
+
+## Templates
+
+- **HTMX for forms.** All form submissions use HTMX — no raw form POSTs, no custom JS. Docs: https://htmx.org/docs/
+- **Shared CSS.** Define base styles once. Use CSS custom properties for colors, spacing, and typography. No duplicated style blocks across templates.
+- **Dark mode.** All pages support `prefers-color-scheme: dark` via CSS media query. No toggle, no JS — respect the OS setting.
+- **Minimal markup.** Semantic HTML, no CSS frameworks, no bundler. HTMX via CDN `<script>` tag.
 
 ## Testing
 

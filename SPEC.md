@@ -23,6 +23,7 @@ Todos land in the Inbox by default and can be triaged into projects. Tags provid
 | Database        | SQLite (FTS5)       |
 | MCP SDK         | `mcp` (official)    |
 | Transport       | Streamable HTTP     |
+| Frontend        | HTMX (CDN)          |
 | Auth            | OAuth 2.1           |
 | Hosting         | Railway (1-click)   |
 
@@ -284,6 +285,15 @@ All auth data lives in SQLite alongside app data:
 - `SECRET_KEY` — overrides the auto-generated token signing key
 - `DATABASE_PATH` — path to SQLite file (default: `./inbox.db`, Railway: `/data/inbox.db`)
 - `PORT` — server port (default: `8000`)
+
+## Templates
+
+The setup, login, and done pages are server-rendered HTML. No SPA, no bundler.
+
+- **HTMX** for all form interactions — validation, submission, error display. CDN script tag, no build step. Docs: https://htmx.org/docs/
+- **Dark mode** via `prefers-color-scheme: dark` CSS media query. No toggle, no JS. All pages adapt to the OS setting automatically.
+- **Shared styles** via CSS custom properties. Colors, spacing, and typography defined once, used everywhere. No duplicated style blocks across templates.
+- **Semantic HTML.** No CSS frameworks. Minimal, readable markup.
 
 ## Project Structure
 

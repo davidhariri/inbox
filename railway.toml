@@ -1,0 +1,10 @@
+[build]
+builder = "dockerfile"
+
+[deploy]
+startCommand = "uv run python -m inbox"
+healthcheckPath = "/health"
+restartPolicyType = "on_failure"
+
+[[mounts]]
+mountPath = "/data"
