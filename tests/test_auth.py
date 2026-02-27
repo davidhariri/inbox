@@ -28,7 +28,6 @@ async def _setup_provider(conn, lazy=False) -> InboxAuthProvider:
     hashed = bcrypt.hashpw(b"password123", bcrypt.gensalt()).decode()
     await db.create_user(conn, "owner@test.com", hashed)
     await db.set_setting(conn, "owner_email", "owner@test.com")
-    await db.set_setting(conn, "sign_in_policy", "only_me")
     return provider
 
 
@@ -183,10 +182,9 @@ async def test_lazy_full_auth_flow(conn):
     assert await provider.load_access_token(new_token.access_token) is None
 
 
-async def test_lazy_new_user_signup(conn):
-    """Login as a non-owner user through lazy provider (open sign-in policy)."""
+async def test_non_owner_rejected(conn):
+    """Non-owner email gets rejected during login."""
     provider = await _setup_provider(conn, lazy=True)
-    await db.set_setting(conn, "sign_in_policy", "open")
 
     client_info = OAuthClientInformationFull(
         redirect_uris=[AnyUrl("http://localhost/callback")],
@@ -203,7 +201,8 @@ async def test_lazy_new_user_signup(conn):
     redirect_url = await provider.authorize(client_info, params)
     session_id = redirect_url.split("session=")[1]
 
-    callback_url = await provider.complete_authorization(
-        session_id, "newuser@test.com", "newpassword123"
-    )
-    assert "code=" in callback_url
+    from mcp.server.auth.provider import AuthorizeError
+
+    with pytest.raises(AuthorizeError) as exc_info:
+        await provider.complete_authorization(session_id, "stranger@test.com", "somepassword")
+    assert "restricted to the owner" in str(exc_info.value.error_description)

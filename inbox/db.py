@@ -389,9 +389,7 @@ async def list_projects(db: aiosqlite.Connection) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-async def update_project(
-    db: aiosqlite.Connection, project_id: int, **fields
-) -> dict | None:
+async def update_project(db: aiosqlite.Connection, project_id: int, **fields) -> dict | None:
     project = await get_project(db, project_id)
     if not project:
         return None

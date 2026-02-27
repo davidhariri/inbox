@@ -100,24 +100,6 @@
             border-color: var(--accent);
         }
 
-        select {
-            width: 100%;
-            padding: 10px 14px;
-            font-size: 16px;
-            font-family: var(--font);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: var(--bg);
-            color: var(--text);
-            margin-bottom: var(--space-md);
-            outline: none;
-            appearance: none;
-        }
-
-        .allowlist-field {
-            display: none;
-        }
-
         button {
             width: 100%;
             padding: 12px;
@@ -172,18 +154,6 @@
 
             <label for="password">Password</label>
             <input type="password" id="password" name="password" placeholder="At least 8 characters" required minlength="8">
-
-            <label for="sign_in_policy">Who can sign in?</label>
-            <select id="sign_in_policy" name="sign_in_policy" onchange="document.querySelector('.allowlist-field').style.display = this.value === 'allowlist' ? 'block' : 'none'">
-                <option value="only_me">Only me</option>
-                <option value="allowlist">Specific emails</option>
-                <option value="open">Anyone</option>
-            </select>
-
-            <div class="allowlist-field">
-                <label for="allowed_emails">Allowed emails</label>
-                <input type="text" id="allowed_emails" name="allowed_emails" placeholder="alice@co.com, bob@co.com">
-            </div>
 
             <div id="feedback"></div>
 

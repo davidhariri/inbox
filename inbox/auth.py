@@ -84,35 +84,23 @@ class InboxAuthProvider(_Base):
 
         session = json.loads(session_data)
 
-        # Check sign-in policy
+        # Only the owner can log in
+        owner = await db.get_setting(await self._get_conn(), "owner_email")
+        if email.lower() != owner.lower():
+            raise AuthorizeError(
+                error="access_denied",
+                error_description="Sign-in is restricted to the owner",
+            )
+
         user = await db.get_user_by_email(await self._get_conn(), email)
         if not user:
-            policy = await db.get_setting(await self._get_conn(), "sign_in_policy") or "only_me"
-            if policy == "only_me":
-                owner = await db.get_setting(await self._get_conn(), "owner_email")
-                if email.lower() != owner.lower():
-                    raise AuthorizeError(
-                        error="access_denied",
-                        error_description="Sign-in is restricted to the owner",
-                    )
-            elif policy == "allowlist":
-                allowed = await db.get_setting(await self._get_conn(), "allowed_emails") or ""
-                allowed_list = [e.strip().lower() for e in allowed.split(",") if e.strip()]
-                owner = await db.get_setting(await self._get_conn(), "owner_email")
-                allowed_list.append(owner.lower())
-                if email.lower() not in allowed_list:
-                    raise AuthorizeError(
-                        error="access_denied",
-                        error_description="This email is not on the allowed list",
-                    )
-            # "open" policy: anyone can create an account
+            raise AuthorizeError(
+                error="access_denied",
+                error_description="Account not found",
+            )
 
-            # Create new user
-            hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-            user = await db.create_user(await self._get_conn(), email, hashed)
-        else:
-            if not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
-                raise AuthorizeError(error="access_denied", error_description="Invalid password")
+        if not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
+            raise AuthorizeError(error="access_denied", error_description="Invalid password")
 
         # Generate authorization code
         code = secrets.token_hex(20)

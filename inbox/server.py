@@ -266,8 +266,6 @@ def create_server() -> FastMCP:
         setup_code = str(form.get("setup_code", "")).strip()
         email = str(form.get("email", "")).strip()
         password = str(form.get("password", ""))
-        sign_in_policy = str(form.get("sign_in_policy", "only_me"))
-        allowed_emails = str(form.get("allowed_emails", "")).strip()
 
         stored_code = await db.get_setting(await _get_conn(), "setup_code")
         if setup_code != stored_code:
@@ -281,15 +279,10 @@ def create_server() -> FastMCP:
             return HTMLResponse(
                 '<p class="error">Password must be at least 8 characters.</p>',
             )
-        if sign_in_policy not in ("only_me", "allowlist", "open"):
-            return HTMLResponse('<p class="error">Invalid sign-in policy.</p>')
 
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
         await db.create_user(await _get_conn(), email, hashed)
         await db.set_setting(await _get_conn(), "owner_email", email)
-        await db.set_setting(await _get_conn(), "sign_in_policy", sign_in_policy)
-        if sign_in_policy == "allowlist" and allowed_emails:
-            await db.set_setting(await _get_conn(), "allowed_emails", allowed_emails)
         await db.set_setting(await _get_conn(), "setup_complete", "true")
 
         # Return redirect via HTMX
