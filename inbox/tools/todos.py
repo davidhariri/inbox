@@ -92,6 +92,37 @@ async def create_todo(
     return {"todo": todo, **context}
 
 
+async def bulk_create_todos(
+    conn,
+    names: list[str],
+    project_id: int | None = None,
+) -> dict:
+    if not names:
+        raise ValueError("names must not be empty")
+
+    if project_id is not None:
+        project = await db.get_project(conn, project_id)
+        if not project:
+            raise ValueError(f"project_id {project_id} does not exist")
+
+    created = []
+    for name in names:
+        if not name or not name.strip():
+            raise ValueError("each name must be non-empty")
+        todo = await db.create_todo(conn, name=name.strip(), project_id=project_id)
+        created.append(todo)
+
+    project_name = await _project_name(conn, project_id)
+    open_count = await db.count_open_todos(conn, project_id=project_id if project_id else 0)
+
+    return {
+        "todos": created,
+        "count": len(created),
+        "project": project_name,
+        "open_in_project": open_count,
+    }
+
+
 async def get_todo(conn, id: int) -> dict:
     todo = await db.get_todo(conn, id)
     if not todo:

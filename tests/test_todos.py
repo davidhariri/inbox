@@ -67,6 +67,39 @@ async def test_create_todo_invalid_project(conn):
         await todos.create_todo(conn, name="Test", project_id=999)
 
 
+async def test_bulk_create_todos_inbox(conn):
+    result = await todos.bulk_create_todos(conn, names=["Buy milk", "Buy eggs", "Buy bread"])
+    assert result["count"] == 3
+    assert result["project"] == "Inbox"
+    assert result["open_in_project"] == 3
+    assert [t["name"] for t in result["todos"]] == ["Buy milk", "Buy eggs", "Buy bread"]
+
+
+async def test_bulk_create_todos_with_project(conn):
+    project = await db.create_project(conn, "Groceries")
+    result = await todos.bulk_create_todos(
+        conn, names=["Apples", "Bananas"], project_id=project["id"]
+    )
+    assert result["count"] == 2
+    assert result["project"] == "Groceries"
+    assert all(t["project_id"] == project["id"] for t in result["todos"])
+
+
+async def test_bulk_create_todos_empty_list(conn):
+    with pytest.raises(ValueError, match="must not be empty"):
+        await todos.bulk_create_todos(conn, names=[])
+
+
+async def test_bulk_create_todos_empty_name(conn):
+    with pytest.raises(ValueError, match="non-empty"):
+        await todos.bulk_create_todos(conn, names=["Valid", ""])
+
+
+async def test_bulk_create_todos_invalid_project(conn):
+    with pytest.raises(ValueError, match="does not exist"):
+        await todos.bulk_create_todos(conn, names=["Test"], project_id=999)
+
+
 async def test_get_todo(conn):
     created = await todos.create_todo(conn, name="Test")
     result = await todos.get_todo(conn, created["todo"]["id"])
