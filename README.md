@@ -6,7 +6,7 @@ There's no web UI, no REST API, no CLI. The MCP protocol is the only interface â
 
 ## Deploy on Railway
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/inbox)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/inbox?referralCode=2bD5N8&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 Check the deploy logs for your setup URL and one-time code, then visit it to create your account.
 
