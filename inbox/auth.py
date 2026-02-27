@@ -1,8 +1,11 @@
 import json
+import logging
 import secrets
 import time
 
 import bcrypt
+
+logger = logging.getLogger("inbox")
 from mcp.server.auth.provider import (
     AccessToken,
     AuthorizationCode,
@@ -31,22 +34,30 @@ class InboxAuthProvider(_Base):
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
         row = await db.get_oauth_client(await self._get_conn(), client_id)
         if not row:
+            logger.warning("get_client: client_id=%s NOT FOUND", client_id)
             return None
+        logger.info("get_client: client_id=%s found", client_id)
         return OAuthClientInformationFull(**json.loads(row["client_info"]))
 
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
-        client_id = secrets.token_hex(16)
-        client_secret = secrets.token_hex(32)
-        client_info.client_id = client_id
-        client_info.client_secret = client_secret
-        client_info.client_id_issued_at = int(time.time())
+        logger.info(
+            "register_client: sdk_client_id=%s, persisting as-is", client_info.client_id
+        )
         await db.save_oauth_client(
-            await self._get_conn(), client_id, client_secret, client_info.model_dump_json()
+            await self._get_conn(),
+            client_info.client_id,
+            client_info.client_secret,
+            client_info.model_dump_json(),
         )
 
     async def authorize(
         self, client: OAuthClientInformationFull, params: AuthorizationParams
     ) -> str:
+        logger.info(
+            "authorize: client_id=%s redirect_uri=%s",
+            client.client_id,
+            params.redirect_uri,
+        )
         setup_done = await db.is_setup_complete(await self._get_conn())
         if not setup_done:
             raise AuthorizeError(
@@ -128,8 +139,14 @@ class InboxAuthProvider(_Base):
     ) -> AuthorizationCode | None:
         row = await db.get_authorization_code(await self._get_conn(), authorization_code)
         if not row:
+            logger.warning("load_authorization_code: code not found")
             return None
         if row["client_id"] != client.client_id:
+            logger.warning(
+                "load_authorization_code: client_id mismatch: code has %s, request has %s",
+                row["client_id"],
+                client.client_id,
+            )
             return None
         if row["expires_at"] < time.time():
             await db.delete_authorization_code(await self._get_conn(), authorization_code)

@@ -1,6 +1,9 @@
+import secrets
+import time
+
 import bcrypt
 import pytest
-from mcp.server.auth.provider import AuthorizationParams
+from mcp.server.auth.provider import AuthorizationParams, AuthorizeError
 from mcp.shared.auth import OAuthClientInformationFull
 from pydantic import AnyUrl
 
@@ -19,6 +22,21 @@ class LazyAuthProvider(InboxAuthProvider):
         return self._conn_ref
 
 
+def _make_client_info(**overrides) -> OAuthClientInformationFull:
+    """Build client_info the way the SDK's RegistrationHandler does."""
+    defaults = {
+        "client_id": str(secrets.token_hex(16)),
+        "client_secret": secrets.token_hex(32),
+        "client_id_issued_at": int(time.time()),
+        "redirect_uris": [AnyUrl("http://localhost/callback")],
+        "token_endpoint_auth_method": "client_secret_post",
+        "grant_types": ["authorization_code", "refresh_token"],
+        "response_types": ["code"],
+    }
+    defaults.update(overrides)
+    return OAuthClientInformationFull(**defaults)
+
+
 async def _setup_provider(conn, lazy=False) -> InboxAuthProvider:
     if lazy:
         provider = LazyAuthProvider(conn, "http://localhost:8000")
@@ -33,11 +51,8 @@ async def _setup_provider(conn, lazy=False) -> InboxAuthProvider:
 
 async def test_register_and_get_client(conn):
     provider = await _setup_provider(conn)
-    client_info = OAuthClientInformationFull(
-        redirect_uris=[AnyUrl("http://localhost/callback")],
-    )
+    client_info = _make_client_info()
     await provider.register_client(client_info)
-    assert client_info.client_id is not None
 
     loaded = await provider.get_client(client_info.client_id)
     assert loaded is not None
@@ -52,9 +67,7 @@ async def test_get_client_not_found(conn):
 
 async def test_authorize_returns_login_url(conn):
     provider = await _setup_provider(conn)
-    client_info = OAuthClientInformationFull(
-        redirect_uris=[AnyUrl("http://localhost/callback")],
-    )
+    client_info = _make_client_info()
     await provider.register_client(client_info)
 
     params = AuthorizationParams(
@@ -69,16 +82,11 @@ async def test_authorize_returns_login_url(conn):
     assert "/login?session=" in redirect_url
 
 
-async def test_full_auth_flow(conn):
-    provider = await _setup_provider(conn)
-
-    # Register client
-    client_info = OAuthClientInformationFull(
-        redirect_uris=[AnyUrl("http://localhost/callback")],
-    )
+async def _do_full_auth_flow(provider):
+    """Shared auth flow used by both eager and lazy provider tests."""
+    client_info = _make_client_info()
     await provider.register_client(client_info)
 
-    # Authorize
     params = AuthorizationParams(
         state="test-state",
         scopes=["inbox"],
@@ -89,40 +97,38 @@ async def test_full_auth_flow(conn):
     redirect_url = await provider.authorize(client_info, params)
     session_id = redirect_url.split("session=")[1]
 
-    # Complete login
     callback_url = await provider.complete_authorization(
         session_id, "owner@test.com", "password123"
     )
     assert "code=" in callback_url
     assert "state=test-state" in callback_url
 
-    # Extract code
     code = callback_url.split("code=")[1].split("&")[0]
 
-    # Load authorization code
     auth_code = await provider.load_authorization_code(client_info, code)
     assert auth_code is not None
 
-    # Exchange for tokens
     token = await provider.exchange_authorization_code(client_info, auth_code)
     assert token.access_token is not None
     assert token.refresh_token is not None
 
-    # Verify access token
     access = await provider.load_access_token(token.access_token)
     assert access is not None
 
-    # Refresh token
     refresh = await provider.load_refresh_token(client_info, token.refresh_token)
     assert refresh is not None
 
     new_token = await provider.exchange_refresh_token(client_info, refresh, ["inbox"])
     assert new_token.access_token != token.access_token
 
-    # Revoke
     new_access = await provider.load_access_token(new_token.access_token)
     await provider.revoke_token(new_access)
     assert await provider.load_access_token(new_token.access_token) is None
+
+
+async def test_full_auth_flow(conn):
+    provider = await _setup_provider(conn)
+    await _do_full_auth_flow(provider)
 
 
 # --- Lazy provider tests (mirrors production LazyAuthProvider) ---
@@ -137,58 +143,14 @@ async def test_lazy_provider_has_no_conn_attr(conn):
 async def test_lazy_full_auth_flow(conn):
     """Full auth flow through the lazy provider catches stray self.conn references."""
     provider = await _setup_provider(conn, lazy=True)
-
-    client_info = OAuthClientInformationFull(
-        redirect_uris=[AnyUrl("http://localhost/callback")],
-    )
-    await provider.register_client(client_info)
-
-    params = AuthorizationParams(
-        state="test-state",
-        scopes=["inbox"],
-        code_challenge="test-challenge",
-        redirect_uri=AnyUrl("http://localhost/callback"),
-        redirect_uri_provided_explicitly=True,
-    )
-    redirect_url = await provider.authorize(client_info, params)
-    session_id = redirect_url.split("session=")[1]
-
-    callback_url = await provider.complete_authorization(
-        session_id, "owner@test.com", "password123"
-    )
-    assert "code=" in callback_url
-    assert "state=test-state" in callback_url
-
-    code = callback_url.split("code=")[1].split("&")[0]
-
-    auth_code = await provider.load_authorization_code(client_info, code)
-    assert auth_code is not None
-
-    token = await provider.exchange_authorization_code(client_info, auth_code)
-    assert token.access_token is not None
-    assert token.refresh_token is not None
-
-    access = await provider.load_access_token(token.access_token)
-    assert access is not None
-
-    refresh = await provider.load_refresh_token(client_info, token.refresh_token)
-    assert refresh is not None
-
-    new_token = await provider.exchange_refresh_token(client_info, refresh, ["inbox"])
-    assert new_token.access_token != token.access_token
-
-    new_access = await provider.load_access_token(new_token.access_token)
-    await provider.revoke_token(new_access)
-    assert await provider.load_access_token(new_token.access_token) is None
+    await _do_full_auth_flow(provider)
 
 
 async def test_non_owner_rejected(conn):
     """Non-owner email gets rejected during login."""
     provider = await _setup_provider(conn, lazy=True)
 
-    client_info = OAuthClientInformationFull(
-        redirect_uris=[AnyUrl("http://localhost/callback")],
-    )
+    client_info = _make_client_info()
     await provider.register_client(client_info)
 
     params = AuthorizationParams(
@@ -200,8 +162,6 @@ async def test_non_owner_rejected(conn):
     )
     redirect_url = await provider.authorize(client_info, params)
     session_id = redirect_url.split("session=")[1]
-
-    from mcp.server.auth.provider import AuthorizeError
 
     with pytest.raises(AuthorizeError) as exc_info:
         await provider.complete_authorization(session_id, "stranger@test.com", "somepassword")

@@ -1,7 +1,10 @@
+import logging
 import os
 import secrets
 import sqlite3
 from pathlib import Path
+
+logger = logging.getLogger("inbox")
 
 import bcrypt
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions, RevocationOptions
@@ -324,12 +327,14 @@ def create_server() -> FastMCP:
 
         try:
             redirect_url = await auth_provider.complete_authorization(session_id, email, password)
+            logger.info("login: success, redirecting to %s", redirect_url)
             return HTMLResponse(
                 headers={"HX-Redirect": redirect_url},
                 content="",
             )
         except Exception as e:
             msg = str(e.error_description) if hasattr(e, "error_description") else str(e)
+            logger.warning("login: failed: %s", msg)
             return HTMLResponse(f'<p class="error">{msg}</p>')
 
     return mcp
