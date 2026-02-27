@@ -272,19 +272,17 @@ def create_server() -> FastMCP:
         stored_code = await db.get_setting(await _get_conn(), "setup_code")
         if setup_code != stored_code:
             return HTMLResponse(
-                '<p class="error">Invalid setup code. Check your server logs.</p>',
-                status_code=400,
+                '<p class="error">Invalid setup code. Check your deploy logs.</p>',
             )
 
         if not email:
-            return HTMLResponse('<p class="error">Email is required.</p>', status_code=400)
+            return HTMLResponse('<p class="error">Email is required.</p>')
         if not password or len(password) < 8:
             return HTMLResponse(
                 '<p class="error">Password must be at least 8 characters.</p>',
-                status_code=400,
             )
         if sign_in_policy not in ("only_me", "allowlist", "open"):
-            return HTMLResponse('<p class="error">Invalid sign-in policy.</p>', status_code=400)
+            return HTMLResponse('<p class="error">Invalid sign-in policy.</p>')
 
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
         await db.create_user(await _get_conn(), email, hashed)
@@ -329,7 +327,6 @@ def create_server() -> FastMCP:
         if not email or not password:
             return HTMLResponse(
                 '<p class="error">Email and password are required.</p>',
-                status_code=400,
             )
 
         try:
@@ -340,9 +337,6 @@ def create_server() -> FastMCP:
             )
         except Exception as e:
             msg = str(e.error_description) if hasattr(e, "error_description") else str(e)
-            return HTMLResponse(
-                f'<p class="error">{msg}</p>',
-                status_code=400,
-            )
+            return HTMLResponse(f'<p class="error">{msg}</p>')
 
     return mcp
