@@ -6,6 +6,7 @@ from pathlib import Path
 import bcrypt
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions, RevocationOptions
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from pydantic import AnyHttpUrl
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -120,7 +121,7 @@ def create_server() -> FastMCP:
 
     # --- Todo tools ---
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(destructiveHint=False))
     async def create_todo(
         name: str,
         link: str | None = None,
@@ -141,12 +142,12 @@ def create_server() -> FastMCP:
             tags=tags,
         )
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_todo(id: int) -> dict:
         """Fetch a single todo by ID."""
         return await todo_tools.get_todo(await _get_conn(), id)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True))
     async def update_todo(
         id: int,
         name: str | None = None,
@@ -169,22 +170,22 @@ def create_server() -> FastMCP:
             tags=tags,
         )
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True))
     async def complete_todo(id: int) -> dict:
         """Mark a todo as done."""
         return await todo_tools.complete_todo(await _get_conn(), id)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True))
     async def reopen_todo(id: int) -> dict:
         """Reopen a completed todo."""
         return await todo_tools.reopen_todo(await _get_conn(), id)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
     async def delete_todo(id: int) -> dict:
         """Soft-delete a todo."""
         return await todo_tools.delete_todo(await _get_conn(), id)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def search_todos(
         query: str | None = None,
         tags: list[str] | None = None,
@@ -210,29 +211,29 @@ def create_server() -> FastMCP:
 
     # --- Project tools ---
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(destructiveHint=False))
     async def create_project(name: str) -> dict:
         """Create a new project."""
         return await project_tools.create_project(await _get_conn(), name)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_projects() -> dict:
         """List all active projects with todo counts."""
         return await project_tools.list_projects(await _get_conn())
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True))
     async def update_project(id: int, name: str) -> dict:
         """Rename a project."""
         return await project_tools.update_project(await _get_conn(), id, name)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
     async def delete_project(id: int) -> dict:
         """Soft-delete a project. Todos in the project are moved to the Inbox."""
         return await project_tools.delete_project(await _get_conn(), id)
 
     # --- Tag tools ---
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_tags() -> dict:
         """List all unique tags in use across active todos, with counts."""
         return await tag_tools.list_tags(await _get_conn())
