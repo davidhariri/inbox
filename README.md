@@ -21,30 +21,7 @@ Check the logs for the setup URL on first run.
 
 ## Connect your client
 
-### Claude Desktop
-
-Add to your Claude Desktop config:
-
-```json
-{
-  "mcpServers": {
-    "inbox": {
-      "type": "streamable-http",
-      "url": "http://localhost:8000/mcp"
-    }
-  }
-}
-```
-
-### Claude Code
-
-```bash
-claude mcp add inbox --transport http http://localhost:8000/mcp
-```
-
-### ChatGPT
-
-In ChatGPT settings, add an MCP server with URL: `http://localhost:8000/mcp`
+After completing setup, the confirmation page at `/done` shows connection instructions with your server URL pre-filled for Claude Desktop, Claude Code, and ChatGPT.
 
 ## Environment variables
 
