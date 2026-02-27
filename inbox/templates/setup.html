@@ -134,6 +134,13 @@
 
         button:hover { background: var(--accent-hover); }
 
+        .hint {
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-top: calc(-1 * var(--space-sm));
+            margin-bottom: var(--space-md);
+        }
+
         .error {
             color: var(--error);
             font-size: 14px;
@@ -158,6 +165,7 @@
         <form hx-post="/setup" hx-target="#feedback" hx-swap="innerHTML">
             <label for="setup_code">Setup code</label>
             <input type="text" id="setup_code" name="setup_code" placeholder="From your server logs" required autocomplete="off">
+            <p class="hint">Find this in your deploy logs.</p>
 
             <label for="email">Email</label>
             <input type="email" id="email" name="email" placeholder="you@example.com" required>
