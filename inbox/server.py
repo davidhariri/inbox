@@ -1,10 +1,7 @@
-import logging
 import os
 import secrets
 import sqlite3
 from pathlib import Path
-
-logger = logging.getLogger("inbox")
 
 import bcrypt
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions, RevocationOptions
@@ -209,9 +206,11 @@ def create_server() -> FastMCP:
         priority: str | None = None,
         status: str = "open",
     ) -> dict:
-        """Search todos. All params optional — no args returns all open Inbox todos.
+        """Search and filter todos. Use filters to avoid fetching everything.
 
-        Use project_id=0 for Inbox only.
+        Tips: use due_before=YYYY-MM-DD for todos due by a date (or today's date for overdue).
+        Use project_id=0 for Inbox only, or a specific project ID. Combine filters to narrow results.
+        Calling with no args returns ALL open todos — prefer filtering first.
         """
         conn = await _get_conn()
         return await todo_tools.search_todos(
@@ -344,14 +343,12 @@ def create_server() -> FastMCP:
 
         try:
             redirect_url = await auth_provider.complete_authorization(session_id, email, password)
-            logger.info("login: success, redirecting to %s", redirect_url)
             return HTMLResponse(
                 headers={"HX-Redirect": redirect_url},
                 content="",
             )
         except Exception as e:
             msg = str(e.error_description) if hasattr(e, "error_description") else str(e)
-            logger.warning("login: failed: %s", msg)
             return HTMLResponse(f'<p class="error">{msg}</p>')
 
     return mcp
