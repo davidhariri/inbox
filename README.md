@@ -6,13 +6,26 @@ There's no web UI, no REST API, no CLI. The MCP protocol is the only interface �
 
 ## Deployment
 
-Deploy Inbox, then visit the setup URL printed in the logs to create your owner account. You'll enter a one-time code (also in the logs), set your email and password, and choose a sign-in policy.
+Deploy Inbox, then check the logs for the setup URL and one-time code:
+
+```
+┌─────────────────────────────────────────────┐
+│  Inbox is ready for setup.                  │
+│                                             │
+│  Visit: https://your-server.example/setup   │
+│  Setup code: A7B3F1E9                       │
+│                                             │
+│  This code expires when setup is complete.  │
+└─────────────────────────────────────────────┘
+```
+
+Visit the URL, enter the code, and create your account.
 
 ### Railway
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/inbox?referralCode=2bD5N8&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
-Check the deploy logs for your setup URL and one-time code.
+One-click deploy — check the logs for your setup URL.
 
 ### Self-hosted
 
