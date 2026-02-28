@@ -3,12 +3,12 @@ import secrets
 import time
 
 import bcrypt
+from fastmcp.server.auth.auth import ClientRegistrationOptions, OAuthProvider, RevocationOptions
 from mcp.server.auth.provider import (
     AccessToken,
     AuthorizationCode,
     AuthorizationParams,
     AuthorizeError,
-    OAuthAuthorizationServerProvider,
     RefreshToken,
     construct_redirect_uri,
 )
@@ -17,11 +17,19 @@ from pydantic import AnyUrl
 
 from inbox import db
 
-_Base = OAuthAuthorizationServerProvider[AuthorizationCode, RefreshToken, AccessToken]
 
-
-class InboxAuthProvider(_Base):
+class InboxAuthProvider(OAuthProvider):
     def __init__(self, conn, server_url: str):
+        super().__init__(
+            base_url=server_url,
+            client_registration_options=ClientRegistrationOptions(
+                enabled=True,
+                valid_scopes=["inbox"],
+                default_scopes=["inbox"],
+            ),
+            revocation_options=RevocationOptions(enabled=True),
+            required_scopes=[],
+        )
         self.conn = conn
         self.server_url = server_url
 
@@ -52,7 +60,6 @@ class InboxAuthProvider(_Base):
                 error_description="Setup not complete",
             )
 
-        # Store auth params in a pending session so login can complete it
         session_id = secrets.token_hex(16)
         await db.set_setting(
             await self._get_conn(),
@@ -72,7 +79,6 @@ class InboxAuthProvider(_Base):
         return f"{self.server_url}/login?session={session_id}"
 
     async def complete_authorization(self, session_id: str, email: str, password: str) -> str:
-        """Validate login and return redirect URL with auth code."""
         session_data = await db.get_setting(await self._get_conn(), f"auth_session:{session_id}")
         if not session_data:
             raise AuthorizeError(
@@ -82,7 +88,6 @@ class InboxAuthProvider(_Base):
 
         session = json.loads(session_data)
 
-        # Only the owner can log in
         owner = await db.get_setting(await self._get_conn(), "owner_email")
         if email.lower() != owner.lower():
             raise AuthorizeError(
@@ -100,7 +105,6 @@ class InboxAuthProvider(_Base):
         if not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
             raise AuthorizeError(error="access_denied", error_description="Invalid password")
 
-        # Generate authorization code
         code = secrets.token_hex(20)
         await db.save_authorization_code(
             await self._get_conn(),
@@ -114,7 +118,6 @@ class InboxAuthProvider(_Base):
             resource=session.get("resource"),
         )
 
-        # Clean up session
         await db.set_setting(await self._get_conn(), f"auth_session:{session_id}", "")
 
         return construct_redirect_uri(
@@ -196,7 +199,6 @@ class InboxAuthProvider(_Base):
     async def exchange_refresh_token(
         self, client: OAuthClientInformationFull, refresh_token: RefreshToken, scopes: list[str]
     ) -> OAuthToken:
-        # Revoke old tokens
         await db.delete_oauth_tokens_for_client(await self._get_conn(), client.client_id)
 
         access_token = secrets.token_hex(32)

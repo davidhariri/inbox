@@ -12,18 +12,17 @@ from inbox.auth import InboxAuthProvider
 
 
 class LazyAuthProvider(InboxAuthProvider):
-    """Mirrors the lazy provider in server.py — no self.conn, only _get_conn()."""
+    """Mirrors the lazy provider in app.py — conn starts as None, set later."""
 
     def __init__(self, conn_ref, server_url):
+        super().__init__(conn=None, server_url=server_url)
         self._conn_ref = conn_ref
-        self.server_url = server_url
 
     async def _get_conn(self):
         return self._conn_ref
 
 
 def _make_client_info(**overrides) -> OAuthClientInformationFull:
-    """Build client_info the way the SDK's RegistrationHandler does."""
     defaults = {
         "client_id": str(secrets.token_hex(16)),
         "client_secret": secrets.token_hex(32),
@@ -83,7 +82,6 @@ async def test_authorize_returns_login_url(conn):
 
 
 async def _do_full_auth_flow(provider):
-    """Shared auth flow used by both eager and lazy provider tests."""
     client_info = _make_client_info()
     await provider.register_client(client_info)
 
@@ -131,23 +129,19 @@ async def test_full_auth_flow(conn):
     await _do_full_auth_flow(provider)
 
 
-# --- Lazy provider tests (mirrors production LazyAuthProvider) ---
-
-
-async def test_lazy_provider_has_no_conn_attr(conn):
-    """LazyAuthProvider must not have self.conn — that's the whole point."""
+async def test_lazy_provider_has_no_direct_conn(conn):
+    """LazyAuthProvider overrides _get_conn to use _conn_ref."""
     provider = await _setup_provider(conn, lazy=True)
-    assert not hasattr(provider, "conn")
+    # conn is set to None in super().__init__, _conn_ref is the real connection
+    assert provider._conn_ref is conn
 
 
 async def test_lazy_full_auth_flow(conn):
-    """Full auth flow through the lazy provider catches stray self.conn references."""
     provider = await _setup_provider(conn, lazy=True)
     await _do_full_auth_flow(provider)
 
 
 async def test_non_owner_rejected(conn):
-    """Non-owner email gets rejected during login."""
     provider = await _setup_provider(conn, lazy=True)
 
     client_info = _make_client_info()
