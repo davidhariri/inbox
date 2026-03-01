@@ -8,7 +8,7 @@ from fastapi import FastAPI
 
 from inbox import db
 from inbox.auth import InboxAuthProvider
-from inbox.routes import health, pages, projects, tags, todos
+from inbox.routes import health, oauth, pages, projects, tags, todos
 from inbox.server import create_mcp
 
 
@@ -62,7 +62,9 @@ def create_app() -> FastAPI:
     _print_setup_banner()
 
     # Create MCP server with OAuth auth and its ASGI sub-app
-    auth_provider = InboxAuthProvider(conn=None, server_url=server_url)
+    auth_provider = InboxAuthProvider(
+        conn=None, server_url=server_url + "/mcp", root_server_url=server_url
+    )
     mcp = create_mcp(auth=auth_provider)
     mcp_app = mcp.http_app(path="/", transport="streamable-http")
 
@@ -100,6 +102,7 @@ def create_app() -> FastAPI:
 
     # Include REST API routers
     app.include_router(health.router)
+    app.include_router(oauth.router)
     app.include_router(todos.router)
     app.include_router(projects.router)
     app.include_router(tags.router)

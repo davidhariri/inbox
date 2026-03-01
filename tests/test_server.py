@@ -166,3 +166,77 @@ async def test_mcp_valid_token_passes_auth(server_app, tmp_path):
             headers={"Authorization": "Bearer valid-token"},
         )
         assert resp.status_code not in (401, 403)
+
+
+# --- Root-level OAuth discovery ---
+
+
+async def test_root_oauth_metadata_has_root_urls(client):
+    resp = await client.get("/.well-known/oauth-authorization-server")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["authorization_endpoint"] == "http://localhost:8000/authorize"
+    assert data["token_endpoint"] == "http://localhost:8000/token"
+    assert data["registration_endpoint"] == "http://localhost:8000/register"
+    assert data["revocation_endpoint"] == "http://localhost:8000/revoke"
+
+
+async def test_mcp_oauth_metadata_has_mcp_urls(client):
+    resp = await client.get("/mcp/.well-known/oauth-authorization-server")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "/mcp/authorize" in data["authorization_endpoint"]
+    assert "/mcp/token" in data["token_endpoint"]
+
+
+async def test_root_token_endpoint_works(server_app, client):
+    """POST /token delegates to the same auth provider as /mcp/token."""
+    conn = server_app.state.conn
+
+    # Register a client and create an auth code
+    import json
+
+    client_info = {
+        "client_id": "root-test-client",
+        "client_secret": "root-test-secret",
+        "grant_types": ["authorization_code", "refresh_token"],
+        "redirect_uris": ["http://localhost/callback"],
+        "response_types": ["code"],
+        "token_endpoint_auth_method": "client_secret_post",
+    }
+    await db.save_oauth_client(
+        conn, "root-test-client", "root-test-secret", json.dumps(client_info)
+    )
+
+    # Try a token request — it will fail with invalid_grant (no real code),
+    # but a 400 proves the endpoint is wired up correctly (not 404 or 405)
+    resp = await client.post(
+        "/token",
+        data={
+            "grant_type": "authorization_code",
+            "code": "fake-code",
+            "client_id": "root-test-client",
+            "client_secret": "root-test-secret",
+            "code_verifier": "fake-verifier",
+            "redirect_uri": "http://localhost/callback",
+        },
+    )
+    assert resp.status_code == 400
+    assert resp.json()["error"] == "invalid_grant"
+
+
+async def test_root_register_endpoint_works(client):
+    """POST /register creates a client via the same auth provider."""
+    resp = await client.post(
+        "/register",
+        json={
+            "redirect_uris": ["http://localhost/callback"],
+            "client_name": "Test App",
+            "grant_types": ["authorization_code", "refresh_token"],
+            "response_types": ["code"],
+            "token_endpoint_auth_method": "client_secret_post",
+        },
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert "client_id" in data

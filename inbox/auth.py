@@ -19,7 +19,7 @@ from inbox import db
 
 
 class InboxAuthProvider(OAuthProvider):
-    def __init__(self, conn, server_url: str):
+    def __init__(self, conn, server_url: str, root_server_url: str | None = None):
         super().__init__(
             base_url=server_url,
             client_registration_options=ClientRegistrationOptions(
@@ -32,6 +32,7 @@ class InboxAuthProvider(OAuthProvider):
         )
         self.conn = conn
         self.server_url = server_url
+        self.root_server_url = root_server_url or server_url
 
     async def _get_conn(self):
         return self.conn
@@ -76,7 +77,7 @@ class InboxAuthProvider(OAuthProvider):
                 }
             ),
         )
-        return f"{self.server_url}/login?session={session_id}"
+        return f"{self.root_server_url}/login?session={session_id}"
 
     async def complete_authorization(self, session_id: str, email: str, password: str) -> str:
         session_data = await db.get_setting(await self._get_conn(), f"auth_session:{session_id}")
