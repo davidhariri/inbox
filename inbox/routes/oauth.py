@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+from mcp.server.auth.handlers.authorize import AuthorizationHandler
 from mcp.server.auth.handlers.register import RegistrationHandler
 from mcp.server.auth.handlers.revoke import RevocationHandler
 from mcp.server.auth.handlers.token import TokenHandler
@@ -37,6 +38,13 @@ async def oauth_metadata(request: Request):
         content=_build_root_metadata(auth.root_server_url),
         headers={"Cache-Control": "public, max-age=3600"},
     )
+
+
+@router.get("/authorize")
+async def authorize(request: Request):
+    auth = request.app.state.auth_provider
+    handler = AuthorizationHandler(auth)
+    return await handler.handle(request)
 
 
 @router.post("/token")
