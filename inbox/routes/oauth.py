@@ -7,7 +7,7 @@ from mcp.server.auth.handlers.register import RegistrationHandler
 from mcp.server.auth.handlers.revoke import RevocationHandler
 from mcp.server.auth.handlers.token import TokenHandler
 from mcp.server.auth.middleware.client_auth import ClientAuthenticator
-from mcp.shared.auth import OAuthMetadata
+from mcp.shared.auth import OAuthMetadata, ProtectedResourceMetadata
 from pydantic import AnyHttpUrl
 
 router = APIRouter()
@@ -36,6 +36,22 @@ async def oauth_metadata(request: Request):
     auth = request.app.state.auth_provider
     return JSONResponse(
         content=_build_root_metadata(auth.root_server_url),
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
+
+
+@router.get("/.well-known/oauth-protected-resource/mcp/")
+@router.get("/.well-known/oauth-protected-resource/mcp")
+async def protected_resource_metadata(request: Request):
+    auth = request.app.state.auth_provider
+    base = auth.root_server_url.rstrip("/")
+    metadata = ProtectedResourceMetadata(
+        resource=AnyHttpUrl(f"{base}/mcp"),
+        authorization_servers=[AnyHttpUrl(base)],
+        scopes_supported=["inbox"],
+    )
+    return JSONResponse(
+        content=metadata.model_dump(exclude_none=True, mode="json"),
         headers={"Cache-Control": "public, max-age=3600"},
     )
 
